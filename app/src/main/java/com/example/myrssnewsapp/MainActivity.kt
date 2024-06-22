@@ -16,6 +16,7 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,6 +28,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         auth = FirebaseAuth.getInstance()
+        googleSignInClient = GoogleSignIn.getClient(this, getGoogleSignInOptions())
+
+        // Sprawdzenie, czy użytkownik jest zalogowany
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            navigateToProfile()
+            return
+        }
 
         val emailEditText = findViewById<EditText>(R.id.etEmail)
         val passwordEditText = findViewById<EditText>(R.id.etPassword)
@@ -46,23 +55,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         registerButton.setOnClickListener {
-            val email = emailEditText.text.toString().trim()
-            val password = passwordEditText.text.toString().trim()
-
-            if (email.isNotEmpty() && password.isNotEmpty()) {
-                register(email, password)
-            } else {
-                Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
-            }
+            val intent = Intent(this, RegisterActivity::class.java)
+            startActivity(intent)
         }
-
-        // Konfiguracja Google Sign-In
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-
-        googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         signInGoogleButton.setOnClickListener {
             signInWithGoogle()
@@ -75,23 +70,10 @@ class MainActivity : AppCompatActivity() {
                 if (task.isSuccessful) {
                     Log.d("SignIn", "signInWithEmail:success")
                     Toast.makeText(this, "Authentication Success.", Toast.LENGTH_SHORT).show()
+                    navigateToProfile()
                 } else {
                     Log.w("SignIn", "signInWithEmail:failure", task.exception)
                     Toast.makeText(this, "Authentication Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-    }
-
-    private fun register(email: String, password: String) {
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    Log.d("Register", "createUserWithEmail:success")
-                    Toast.makeText(this, "Registration Success.", Toast.LENGTH_SHORT).show()
-                    signIn(email, password)
-                } else {
-                    Log.w("Register", "createUserWithEmail:failure", task.exception)
-                    Toast.makeText(this, "Registration Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
     }
@@ -126,10 +108,26 @@ class MainActivity : AppCompatActivity() {
                 if (task.isSuccessful) {
                     Log.d("GoogleSignIn", "signInWithCredential:success")
                     Toast.makeText(this, "Google Sign-In Success.", Toast.LENGTH_SHORT).show()
+                    navigateToProfile()
                 } else {
                     Log.w("GoogleSignIn", "signInWithCredential:failure", task.exception)
                     Toast.makeText(this, "Google Sign-In Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+    }
+
+    private fun navigateToProfile() {
+        val user = auth.currentUser
+        val intent = Intent(this, ProfileActivity::class.java)
+        intent.putExtra("USER_EMAIL", user?.email)
+        startActivity(intent)
+        finish() // Zamknięcie MainActivity, aby nie można było wrócić do ekranu logowania
+    }
+
+    private fun getGoogleSignInOptions(): GoogleSignInOptions {
+        return GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
     }
 }
