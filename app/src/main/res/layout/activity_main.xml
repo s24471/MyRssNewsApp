@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".MainActivity">
+
+    <EditText
+        android:id="@+id/etEmail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Email" />
+
+    <EditText
+        android:id="@+id/etPassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Password"
+        android:inputType="textPassword" />
+
+    <Button
+        android:id="@+id/btnSignIn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sign In" />
+
+    <Button
+        android:id="@+id/btnSignInGoogle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sign In Using Google" />
+
+    <Button
+        android:id="@+id/btnRegister"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Register" />
+</LinearLayout>

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "417188093014",
+    "project_id": "myrssnewsapp",
+    "storage_bucket": "myrssnewsapp.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:417188093014:android:063abf4b849139656d6ff7",
+        "android_client_info": {
+          "package_name": "com.example.myrssnewsapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "417188093014-p56bjtqbs2tfsuc15m344gqe35mqngt5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.myrssnewsapp",
+            "certificate_hash": "75e6ba24dece322d373ce9b64950951add70ad64"
+          }
+        },
+        {
+          "client_id": "417188093014-548138il8if8sec6lhfm8pgpi76hs4n5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMn15GYahIpHC5htK5Ba7GBQiXi0WbKGA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "417188093014-548138il8if8sec6lhfm8pgpi76hs4n5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
