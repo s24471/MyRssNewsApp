@@ -64,8 +64,8 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
         }
 
         if (newArticles.isNotEmpty()) {
-            newArticles.forEach { article ->
-                showNotification(article.title, article.link)
+            newArticles.forEachIndexed { index, article ->
+                showNotification(index, article.title, article.link)
             }
             // Update notified articles in Firestore
             firestore.collection("notifiedArticles").document(userId)
@@ -91,7 +91,7 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
         Log.d("RssWorker", "Scheduled next check")
     }
 
-    private fun showNotification(title: String, link: String) {
+    private fun showNotification(notificationId: Int, title: String, link: String) {
         Log.d("RssWorker", "Showing notification: $title")
 
         createNotificationChannel()
@@ -121,7 +121,7 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
                 Log.d("RssWorker", "Notification permission not granted")
                 return
             }
-            notify(1, notificationBuilder.build())
+            notify(notificationId, notificationBuilder.build())
             Log.d("RssWorker", "Notification sent")
         }
     }

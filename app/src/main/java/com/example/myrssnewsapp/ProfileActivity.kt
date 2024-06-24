@@ -102,12 +102,13 @@ class ProfileActivity : AppCompatActivity() {
     private fun refreshRssFeed() {
         CoroutineScope(Dispatchers.IO).launch {
             val newRssItems = fetchRssItems()
-            updateRssItems(newRssItems)
+            val allFavItems = fetchFavoriteItems()
+            updateRssItems(newRssItems, allFavItems)
         }
     }
 
     private suspend fun fetchRssItems(): List<RssItem> {
-        val url = "https://wiadomosci.gazeta.pl/pub/rss/wiadomosci_kraj.htm"
+        val url = "https://lorem-rss.herokuapp.com/feed?unit=second&interval=30"
         val doc = Jsoup.connect(url).get()
         val items = doc.select("item")
 
@@ -122,15 +123,33 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun updateRssItems(newRssItems: List<RssItem>) {
+    private suspend fun fetchFavoriteItems(): List<RssItem> {
+        return withContext(Dispatchers.IO) {
+            favoriteArticles.mapNotNull { link ->
+                try {
+                    val doc = Jsoup.connect(link).get()
+                    val title = doc.select("title").text()
+                    val description = doc.select("meta[name=description]").attr("content")
+                    val imageUrl = doc.select("meta[property=og:image]").attr("content")
+                    RssItem(title, description, imageUrl, link)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
+    }
+
+    private suspend fun updateRssItems(newRssItems: List<RssItem>, allFavItems: List<RssItem>) {
         withContext(Dispatchers.Main) {
             rssItems.clear()
             rssItems.addAll(newRssItems)
 
+            val favItemLinks = mutableSetOf<String>()
             favRssItems.clear()
-            favRssItems.addAll(newRssItems.filter { favoriteArticles.contains(it.link) })
+            favRssItems.addAll(newRssItems.filter { favoriteArticles.contains(it.link) }.also { it.forEach { favItemLinks.add(it.link) } })
+            favRssItems.addAll(allFavItems.filter { !favItemLinks.contains(it.link) })
 
-            prefetchImages(newRssItems)
+            prefetchImages(rssItems + favRssItems)
         }
     }
 
@@ -170,7 +189,9 @@ class ProfileActivity : AppCompatActivity() {
     private fun onArticleFavorited(rssItem: RssItem, isFavorited: Boolean) {
         if (isFavorited) {
             favoriteArticles.add(rssItem.link)
-            favRssItems.add(rssItem)
+            if (!favRssItems.contains(rssItem)) {
+                favRssItems.add(rssItem)
+            }
         } else {
             favoriteArticles.remove(rssItem.link)
             favRssItems.remove(rssItem)
