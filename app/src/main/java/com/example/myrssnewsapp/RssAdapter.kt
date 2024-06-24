@@ -12,13 +12,21 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 
-class RssAdapter(private val context: Context, private val items: List<RssItem>, private val readArticles: Set<String>, private val onItemClicked: (RssItem) -> Unit) : RecyclerView.Adapter<RssAdapter.ViewHolder>() {
+class RssAdapter(
+    private val context: Context,
+    private val items: List<RssItem>,
+    private val readArticles: Set<String>,
+    private val favoriteArticles: Set<String>,
+    private val onItemClicked: (RssItem) -> Unit,
+    private val onItemFavorited: (RssItem, Boolean) -> Unit
+) : RecyclerView.Adapter<RssAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val titleTextView: TextView = view.findViewById(R.id.tvTitle)
         val descriptionTextView: TextView = view.findViewById(R.id.tvDescription)
         val imageView: ImageView = view.findViewById(R.id.imageView)
         val shareButton: Button = view.findViewById(R.id.btnShare)
+        val favoriteButton: Button = view.findViewById(R.id.btnFavorite)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -42,12 +50,23 @@ class RssAdapter(private val context: Context, private val items: List<RssItem>,
             holder.itemView.setBackgroundColor(Color.WHITE)
         }
 
+        if (favoriteArticles.contains(item.link)) {
+            holder.favoriteButton.text = "Unfavorite"
+        } else {
+            holder.favoriteButton.text = "Favorite"
+        }
+
         holder.itemView.setOnClickListener {
             onItemClicked(item)
         }
 
         holder.shareButton.setOnClickListener {
             shareArticle(item)
+        }
+
+        holder.favoriteButton.setOnClickListener {
+            val isFavorited = !favoriteArticles.contains(item.link)
+            onItemFavorited(item, isFavorited)
         }
     }
 

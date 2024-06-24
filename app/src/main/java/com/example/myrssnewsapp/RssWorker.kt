@@ -43,7 +43,7 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
         val notifiedArticles = notifiedLinks.toMutableSet()
 
         // Fetch RSS feed
-        val url = "https://wiadomosci.gazeta.pl/pub/rss/wiadomosci_kraj.htm"
+        val url = "https://lorem-rss.herokuapp.com/feed?unit=second&interval=30"
         val doc = Jsoup.connect(url).get()
         val items = doc.select("item")
 

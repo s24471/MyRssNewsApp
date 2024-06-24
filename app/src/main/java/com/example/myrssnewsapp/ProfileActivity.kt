@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -16,11 +15,8 @@ import androidx.work.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.squareup.picasso.Picasso
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.util.concurrent.TimeUnit
@@ -28,11 +24,15 @@ import java.util.concurrent.TimeUnit
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var rssAdapter: RssAdapter
+    private lateinit var favRssAdapter: RssAdapter
     private val rssItems = mutableListOf<RssItem>()
+    private val favRssItems = mutableListOf<RssItem>()
     private val readArticles = mutableSetOf<String>()
-    private val notifiedArticles = mutableSetOf<String>()
+    private val favoriteArticles = mutableSetOf<String>()
     private lateinit var firestore: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
+    private lateinit var recyclerView: RecyclerView
+    private var showingFavorites = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,28 +42,33 @@ class ProfileActivity : AppCompatActivity() {
         firestore = FirebaseFirestore.getInstance()
 
         val email = auth.currentUser?.email
-        val tvUserEmail = findViewById<TextView>(R.id.tvUserEmail)
-        tvUserEmail.text = email
+        findViewById<TextView>(R.id.tvUserEmail).text = email
 
-        val btnLogout = findViewById<Button>(R.id.btnLogout)
-        btnLogout.setOnClickListener {
-            logout()
+        findViewById<Button>(R.id.btnLogout).setOnClickListener { logout() }
+        findViewById<Button>(R.id.btnRefresh).setOnClickListener { refreshRssFeed() }
+
+        findViewById<Button>(R.id.btnAllArticles).setOnClickListener {
+            showingFavorites = false
+            recyclerView.adapter = rssAdapter
+            rssAdapter.notifyDataSetChanged()
         }
 
-        val btnRefresh = findViewById<Button>(R.id.btnRefresh)
-        btnRefresh.setOnClickListener {
-            refreshRssFeed()
+        findViewById<Button>(R.id.btnFavArticles).setOnClickListener {
+            showingFavorites = true
+            recyclerView.adapter = favRssAdapter
+            favRssAdapter.notifyDataSetChanged()
         }
 
-        val recyclerView = findViewById<RecyclerView>(R.id.rvRssFeed)
+        recyclerView = findViewById(R.id.rvRssFeed)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        rssAdapter = RssAdapter(this, rssItems, readArticles) { rssItem ->
-            onArticleClicked(rssItem)
-        }
+        rssAdapter = RssAdapter(this, rssItems, readArticles, favoriteArticles, ::onArticleClicked, ::onArticleFavorited)
+        favRssAdapter = RssAdapter(this, favRssItems, readArticles, favoriteArticles, ::onArticleClicked, ::onArticleFavorited)
         recyclerView.adapter = rssAdapter
 
-        fetchNotifiedArticles()
-        fetchReadArticles()
+        CoroutineScope(Dispatchers.Main).launch {
+            fetchUserData()
+            refreshRssFeed()
+        }
         setupInitialWork()
         checkNotificationPermission()
     }
@@ -82,67 +87,56 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun fetchNotifiedArticles() {
+    private suspend fun fetchUserData() {
         val userId = auth.currentUser?.uid ?: return
+        val favoriteArticlesDocument = firestore.collection("favoriteArticles").document(userId).get().await()
+        val readArticlesDocument = firestore.collection("readArticles").document(userId).get().await()
 
+        favoriteArticles.clear()
+        favoriteArticles.addAll(favoriteArticlesDocument.get("links") as? List<String> ?: emptyList())
+
+        readArticles.clear()
+        readArticles.addAll(readArticlesDocument.get("links") as? List<String> ?: emptyList())
+    }
+
+    private fun refreshRssFeed() {
         CoroutineScope(Dispatchers.IO).launch {
-            val document = firestore.collection("notifiedArticles").document(userId).get().await()
-            val notifiedLinks = document.get("links") as? List<String> ?: emptyList()
-            notifiedArticles.addAll(notifiedLinks)
+            val newRssItems = fetchRssItems()
+            updateRssItems(newRssItems)
         }
     }
 
-    private fun fetchReadArticles() {
-        val userId = auth.currentUser?.uid ?: return
+    private suspend fun fetchRssItems(): List<RssItem> {
+        val url = "https://wiadomosci.gazeta.pl/pub/rss/wiadomosci_kraj.htm"
+        val doc = Jsoup.connect(url).get()
+        val items = doc.select("item")
 
-        CoroutineScope(Dispatchers.IO).launch {
-            val document = firestore.collection("readArticles").document(userId).get().await()
-            val readLinks = document.get("links") as? List<String> ?: emptyList()
-            readArticles.addAll(readLinks)
-            fetchRssFeed()
+        return items.map { item ->
+            val link = item.select("link").text()
+            val title = item.select("title").text()
+            val descriptionHtml = item.select("description").text()
+            val descriptionDoc: Document = Jsoup.parse(descriptionHtml)
+            val description = descriptionDoc.text()
+            val imageUrl = descriptionDoc.select("img").attr("src")
+            RssItem(title, description, imageUrl, link)
         }
     }
 
-    private fun fetchRssFeed() {
+    private suspend fun updateRssItems(newRssItems: List<RssItem>) {
+        withContext(Dispatchers.Main) {
+            rssItems.clear()
+            rssItems.addAll(newRssItems)
+
+            favRssItems.clear()
+            favRssItems.addAll(newRssItems.filter { favoriteArticles.contains(it.link) })
+
+            prefetchImages(newRssItems)
+        }
+    }
+
+    private fun prefetchImages(items: List<RssItem>) {
         CoroutineScope(Dispatchers.IO).launch {
-            val url = "https://wiadomosci.gazeta.pl/pub/rss/wiadomosci_kraj.htm"
-            val doc = Jsoup.connect(url).get()
-            val items = doc.select("item")
-
-            rssItems.clear() // Clear the list before adding new items
-
-            val newNotifiedArticles = mutableListOf<String>()
             items.forEach { item ->
-                val title = item.select("title").text()
-                val descriptionHtml = item.select("description").text()
-                val descriptionDoc: Document = Jsoup.parse(descriptionHtml)
-                val description = descriptionDoc.text()
-                val imageUrl = descriptionDoc.select("img").attr("src")
-                val link = item.select("link").text()
-                val rssItem = RssItem(title, description, imageUrl, link)
-                rssItems.add(rssItem)
-                newNotifiedArticles.add(link)
-            }
-
-            updateNotifiedArticles(newNotifiedArticles)
-
-            withContext(Dispatchers.Main) {
-                prefetchImages()
-            }
-        }
-    }
-
-    private fun updateNotifiedArticles(newNotifiedArticles: List<String>) {
-        val userId = auth.currentUser?.uid ?: return
-
-        notifiedArticles.addAll(newNotifiedArticles)
-        firestore.collection("notifiedArticles").document(userId)
-            .set(mapOf("links" to notifiedArticles.toList()))
-    }
-
-    private fun prefetchImages() {
-        CoroutineScope(Dispatchers.IO).launch {
-            rssItems.forEach { item ->
                 try {
                     if (item.imageUrl.isNotEmpty()) {
                         val bitmap = Picasso.get().load(item.imageUrl).get()
@@ -155,12 +149,9 @@ class ProfileActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 rssAdapter.notifyDataSetChanged()
+                favRssAdapter.notifyDataSetChanged()
             }
         }
-    }
-
-    private fun refreshRssFeed() {
-        fetchRssFeed() // Re-fetch the RSS feed
     }
 
     private fun onArticleClicked(rssItem: RssItem) {
@@ -170,17 +161,35 @@ class ProfileActivity : AppCompatActivity() {
         }
         startActivity(intent)
 
-        // Mark article as read and save in Firestore
         readArticles.add(rssItem.link)
-        rssAdapter.notifyDataSetChanged()
         saveReadArticles()
+        rssAdapter.notifyDataSetChanged()
+        favRssAdapter.notifyDataSetChanged()
+    }
+
+    private fun onArticleFavorited(rssItem: RssItem, isFavorited: Boolean) {
+        if (isFavorited) {
+            favoriteArticles.add(rssItem.link)
+            favRssItems.add(rssItem)
+        } else {
+            favoriteArticles.remove(rssItem.link)
+            favRssItems.remove(rssItem)
+        }
+        saveFavoriteArticles()
+        rssAdapter.notifyDataSetChanged()
+        favRssAdapter.notifyDataSetChanged()
     }
 
     private fun saveReadArticles() {
         val userId = auth.currentUser?.uid ?: return
-
         firestore.collection("readArticles").document(userId)
             .set(mapOf("links" to readArticles.toList()))
+    }
+
+    private fun saveFavoriteArticles() {
+        val userId = auth.currentUser?.uid ?: return
+        firestore.collection("favoriteArticles").document(userId)
+            .set(mapOf("links" to favoriteArticles.toList()))
     }
 
     private fun logout() {
