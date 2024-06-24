@@ -8,12 +8,6 @@
     tools:context=".RegisterActivity">
 
     <EditText
-        android:id="@+id/etUsername"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Username" />
-
-    <EditText
         android:id="@+id/etEmail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

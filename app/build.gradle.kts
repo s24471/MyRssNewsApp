@@ -56,4 +56,5 @@ dependencies {
     implementation ("com.squareup.okhttp3:okhttp:4.10.0")
     implementation ("org.jsoup:jsoup:1.14.3")
     implementation ("com.squareup.picasso:picasso:2.8")
+    implementation ("androidx.work:work-runtime-ktx:2.7.1")
 }

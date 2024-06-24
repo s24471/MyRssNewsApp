@@ -1,20 +1,24 @@
 package com.example.myrssnewsapp
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.squareup.picasso.Picasso
 
-class RssAdapter(private val items: List<RssItem>, private val readArticles: Set<String>, private val onItemClicked: (RssItem) -> Unit) : RecyclerView.Adapter<RssAdapter.ViewHolder>() {
+class RssAdapter(private val context: Context, private val items: List<RssItem>, private val readArticles: Set<String>, private val onItemClicked: (RssItem) -> Unit) : RecyclerView.Adapter<RssAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val titleTextView: TextView = view.findViewById(R.id.tvTitle)
         val descriptionTextView: TextView = view.findViewById(R.id.tvDescription)
         val imageView: ImageView = view.findViewById(R.id.imageView)
+        val shareButton: Button = view.findViewById(R.id.btnShare)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -26,8 +30,8 @@ class RssAdapter(private val items: List<RssItem>, private val readArticles: Set
         val item = items[position]
         holder.titleTextView.text = item.title
         holder.descriptionTextView.text = item.description
-        if (item.imageUrl.isNotEmpty()) {
-            Picasso.get().load(item.imageUrl).placeholder(R.drawable.placeholder).into(holder.imageView)
+        if (item.imageBitmap != null) {
+            holder.imageView.setImageBitmap(item.imageBitmap)
         } else {
             holder.imageView.setImageResource(R.drawable.placeholder)
         }
@@ -41,7 +45,20 @@ class RssAdapter(private val items: List<RssItem>, private val readArticles: Set
         holder.itemView.setOnClickListener {
             onItemClicked(item)
         }
+
+        holder.shareButton.setOnClickListener {
+            shareArticle(item)
+        }
     }
 
     override fun getItemCount(): Int = items.size
+
+    private fun shareArticle(item: RssItem) {
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, "${item.title}\n\n${item.link}")
+            type = "text/plain"
+        }
+        context.startActivity(Intent.createChooser(shareIntent, "Share article via"))
+    }
 }

@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -16,7 +17,6 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : AppCompatActivity() {
 
@@ -25,12 +25,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         setContentView(R.layout.activity_main)
 
         auth = FirebaseAuth.getInstance()
         googleSignInClient = GoogleSignIn.getClient(this, getGoogleSignInOptions())
 
-        // Sprawdzenie, czy użytkownik jest zalogowany
+        // Check if user is signed in (non-null) and update UI accordingly.
         val currentUser = auth.currentUser
         if (currentUser != null) {
             navigateToProfile()
@@ -60,6 +61,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         signInGoogleButton.setOnClickListener {
+            signOutAndSignInWithGoogle()
+        }
+    }
+
+    private fun signOutAndSignInWithGoogle() {
+        googleSignInClient.signOut().addOnCompleteListener {
             signInWithGoogle()
         }
     }
@@ -117,11 +124,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigateToProfile() {
-        val user = auth.currentUser
         val intent = Intent(this, ProfileActivity::class.java)
-        intent.putExtra("USER_EMAIL", user?.email)
         startActivity(intent)
-        finish() // Zamknięcie MainActivity, aby nie można było wrócić do ekranu logowania
+        finish() // Close MainActivity to prevent navigating back to the login screen
     }
 
     private fun getGoogleSignInOptions(): GoogleSignInOptions {
