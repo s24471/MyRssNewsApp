@@ -33,7 +33,6 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
             return Result.failure()
         }
 
-        // Fetch the list of read articles and notified articles from Firestore
         val document = firestore.collection("readArticles").document(userId).get().await()
         val readLinks = document.get("links") as? List<String> ?: emptyList()
         val readArticles = readLinks.toSet()
@@ -42,8 +41,7 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
         val notifiedLinks = notifiedDocument.get("links") as? List<String> ?: emptyList()
         val notifiedArticles = notifiedLinks.toMutableSet()
 
-        // Fetch RSS feed
-        val url = "https://lorem-rss.herokuapp.com/feed?unit=second&interval=30"
+        val url = "https://wiadomosci.gazeta.pl/pub/rss/wiadomosci_kraj.htm"
         val doc = Jsoup.connect(url).get()
         val items = doc.select("item")
 
@@ -67,7 +65,6 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
             newArticles.forEachIndexed { index, article ->
                 showNotification(index, article.title, article.link)
             }
-            // Update notified articles in Firestore
             firestore.collection("notifiedArticles").document(userId)
                 .set(mapOf("links" to notifiedArticles.toList()))
         }
@@ -105,7 +102,7 @@ class RssWorker(appContext: Context, workerParams: WorkerParameters) : Coroutine
         val pendingIntent: PendingIntent = PendingIntent.getActivity(applicationContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val notificationBuilder = NotificationCompat.Builder(applicationContext, "rss_channel")
-            .setSmallIcon(R.drawable.ic_notification) // Ensure this icon exists in your res/drawable directory
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("New Article Available")
             .setContentText(title)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

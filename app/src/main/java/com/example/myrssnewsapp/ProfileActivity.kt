@@ -108,7 +108,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private suspend fun fetchRssItems(): List<RssItem> {
-        val url = "https://lorem-rss.herokuapp.com/feed?unit=second&interval=30"
+        val url = "https://wiadomosci.gazeta.pl/pub/rss/wiadomosci_kraj.htm"
         val doc = Jsoup.connect(url).get()
         val items = doc.select("item")
 

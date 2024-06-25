@@ -7,5 +7,5 @@ data class RssItem(
     val description: String,
     val imageUrl: String,
     val link: String,
-    var imageBitmap: Bitmap? = null // Add this line
+    var imageBitmap: Bitmap? = null
 )

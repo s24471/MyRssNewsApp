@@ -110,7 +110,7 @@ class RegisterActivity : AppCompatActivity() {
     private fun navigateToProfile() {
         val intent = Intent(this, ProfileActivity::class.java)
         startActivity(intent)
-        finish() // Zamknięcie RegisterActivity, aby nie można było wrócić do ekranu rejestracji
+        finish()
     }
 
     private fun getGoogleSignInOptions(): GoogleSignInOptions {

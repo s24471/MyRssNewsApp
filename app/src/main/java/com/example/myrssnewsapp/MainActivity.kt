@@ -31,7 +31,6 @@ class MainActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         googleSignInClient = GoogleSignIn.getClient(this, getGoogleSignInOptions())
 
-        // Check if user is signed in (non-null) and update UI accordingly.
         val currentUser = auth.currentUser
         if (currentUser != null) {
             navigateToProfile()
@@ -126,7 +125,7 @@ class MainActivity : AppCompatActivity() {
     private fun navigateToProfile() {
         val intent = Intent(this, ProfileActivity::class.java)
         startActivity(intent)
-        finish() // Close MainActivity to prevent navigating back to the login screen
+        finish()
     }
 
     private fun getGoogleSignInOptions(): GoogleSignInOptions {
